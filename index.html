@@ -170,19 +170,19 @@
             const month = config.Report_Month || 'December';
             const greeting = config.Greeting || 'Good afternoon Sun Pharma team,';
             const closing = config.Closing || 'Kind regards,';
+            const signature = config.Signature || '';
             const clientProduct = config.Client_Product || 'ILUMYA®';
 
+            // Group studies by brand, maintaining order from data
             const grouped = {};
+            const brandOrder = [];
             studies.forEach(s => {
                 const brand = s.Brand || 'Other';
-                if (!grouped[brand]) grouped[brand] = [];
+                if (!grouped[brand]) {
+                    grouped[brand] = [];
+                    brandOrder.push(brand);
+                }
                 grouped[brand].push(s);
-            });
-
-            const sortedBrands = Object.keys(grouped).sort((a, b) => {
-                if (a === clientProduct) return -1;
-                if (b === clientProduct) return 1;
-                return a.localeCompare(b);
             });
 
             let html = `<p>${greeting}</p>
@@ -192,7 +192,7 @@
 <p><strong>Updated studies:</strong></p>
 <p>&nbsp;</p>`;
 
-            sortedBrands.forEach(brand => {
+            brandOrder.forEach(brand => {
                 html += `<p><strong>${brand}</strong></p>\n`;
 
                 grouped[brand].forEach(study => {
@@ -203,22 +203,29 @@
                     if (study.Phase) {
                         html += `Phase: ${study.Phase}<br>`;
                     }
+                    
                     html += `Study sponsor: ${study.Sponsor}<br>`;
-                    html += `Study status: ${study.Status}<br>`;
-                    html += `Start date: ${study.Start_Date}<br>`;
+                    
+                    // Status with optional [updated] tag
+                    const statusUpdated = isFieldUpdated(study, 'Study Status') ? ` [updated in ${month}]` : '';
+                    html += `Study status: ${study.Status}${statusUpdated}<br>`;
+                    
+                    // Start date with optional [updated] tag
+                    const startUpdated = isFieldUpdated(study, 'Start Date') ? ` [updated in ${month}]` : '';
+                    html += `Start date: ${study.Start_Date}${startUpdated}<br>`;
 
                     if (study.Primary_Completion_Date) {
-                        const upd = isFieldUpdated(study, 'Primary Completion Date') ? ' [updated in ' + month + ']' : '';
+                        const upd = isFieldUpdated(study, 'Primary Completion Date') ? ` [updated in ${month}]` : '';
                         html += `Primary completion date: ${study.Primary_Completion_Date}${upd}<br>`;
                     }
 
                     if (study.Completion_Date) {
-                        const upd = isFieldUpdated(study, 'Completion Date') ? ' [updated in ' + month + ']' : '';
+                        const upd = isFieldUpdated(study, 'Completion Date') ? ` [updated in ${month}]` : '';
                         html += `Completion date: ${study.Completion_Date}${upd}<br>`;
                     }
 
                     if (study.Results_First_Posted) {
-                        const upd = isFieldUpdated(study, 'Results First Posted') ? ' [updated in ' + month + ']' : '';
+                        const upd = isFieldUpdated(study, 'Results First Posted') ? ` [updated in ${month}]` : '';
                         html += `Results posted: ${study.Results_First_Posted}${upd}<br>`;
                     }
 
@@ -231,6 +238,10 @@
             });
 
             html += `<p>${closing}</p>`;
+            if (signature) {
+                html += `<p>&nbsp;</p><p>${signature}</p>`;
+            }
+
             return html;
         }
 
