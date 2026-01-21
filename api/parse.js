@@ -33,6 +33,7 @@ module.exports = async (req, res) => {
         const buffer = fs.readFileSync(file.filepath);
         const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
 
+        // Parse Config sheet
         const config = {};
         if (workbook.SheetNames.includes('Config')) {
             const configSheet = workbook.Sheets['Config'];
@@ -44,6 +45,19 @@ module.exports = async (req, res) => {
             });
         }
 
+        // Parse Drug_Brand_Map for sort order
+        const brandSortOrder = {};
+        if (workbook.SheetNames.includes('Drug_Brand_Map')) {
+            const mapSheet = workbook.Sheets['Drug_Brand_Map'];
+            const mapData = XLSX.utils.sheet_to_json(mapSheet);
+            mapData.forEach(row => {
+                if (row.Brand_Name && row.Sort_Order) {
+                    brandSortOrder[row.Brand_Name] = row.Sort_Order;
+                }
+            });
+        }
+
+        // Parse main data sheet
         const dataSheetName = workbook.SheetNames.includes('Clinical Trials Data')
             ? 'Clinical Trials Data'
             : workbook.SheetNames[0];
@@ -51,6 +65,7 @@ module.exports = async (req, res) => {
         const dataSheet = workbook.Sheets[dataSheetName];
         const rawData = XLSX.utils.sheet_to_json(dataSheet, { defval: '' });
 
+        // Process studies
         const studies = rawData.map(row => ({
             Brand: row.Brand || '',
             Is_New_Study: parseBoolean(row.Is_New_Study),
@@ -58,16 +73,25 @@ module.exports = async (req, res) => {
             NCT_Number: row.NCT_Number || '',
             Study_Title: row.Study_Title || '',
             Study_URL: row.Study_URL || '',
-            Phase: formatPhase(row.Phase),
+            Phase: formatPhase(row.Phase, row.Study_Type),
+            Study_Type: row.Study_Type || 'Interventional',
             Sponsor: row.Sponsor || '',
-            Status: row.Status || '',
+            Status: formatStatus(row.Status),
             Start_Date: formatDate(row.Start_Date),
             Primary_Completion_Date: formatDate(row.Primary_Completion_Date),
             Completion_Date: formatDate(row.Completion_Date),
             Results_First_Posted: formatDate(row.Results_First_Posted),
-            Strategic_Implications: row.Strategic_Implications || ''
+            Strategic_Implications: row.Strategic_Implications || '',
+            _sortOrder: brandSortOrder[row.Brand] || 999
         })).filter(s => s.NCT_Number);
 
+        // Sort by brand order
+        studies.sort((a, b) => a._sortOrder - b._sortOrder);
+
+        // Remove sort helper
+        studies.forEach(s => delete s._sortOrder);
+
+        // Calculate stats
         const brands = new Set(studies.map(s => s.Brand).filter(Boolean));
         const stats = {
             totalStudies: studies.length,
@@ -90,9 +114,27 @@ function parseBoolean(value) {
     return Boolean(value);
 }
 
-function formatPhase(value) {
-    if (!value && value !== 0) return '';
-    return String(value).replace(/\.0$/, '');
+function formatPhase(value, studyType) {
+    // If no phase but observational study, return "Observational"
+    if ((!value && value !== 0) || value === '') {
+        if (studyType === 'Observational') {
+            return 'Observational';
+        }
+        return '';
+    }
+    const str = String(value).replace(/\.0$/, '');
+    return str;
+}
+
+function formatStatus(value) {
+    if (!value) return '';
+    let s = String(value);
+    // Fix common formatting issues
+    s = s.replace(/Active,\s*Not,\s*Recruiting/gi, 'Active, not recruiting');
+    s = s.replace(/ACTIVE_NOT_RECRUITING/gi, 'Active, not recruiting');
+    s = s.replace(/^RECRUITING$/i, 'Recruiting');
+    s = s.replace(/^COMPLETED$/i, 'Completed');
+    return s;
 }
 
 function formatDate(value) {
