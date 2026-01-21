@@ -3,7 +3,6 @@ const XLSX = require('xlsx');
 const fs = require('fs');
 
 module.exports = async (req, res) => {
-    // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -17,7 +16,7 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const form = formidable({ multiples: false });
+        const form = new formidable.IncomingForm();
 
         const [fields, files] = await new Promise((resolve, reject) => {
             form.parse(req, (err, fields, files) => {
@@ -34,7 +33,6 @@ module.exports = async (req, res) => {
         const buffer = fs.readFileSync(file.filepath);
         const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
 
-        // Parse Config sheet
         const config = {};
         if (workbook.SheetNames.includes('Config')) {
             const configSheet = workbook.Sheets['Config'];
@@ -46,7 +44,6 @@ module.exports = async (req, res) => {
             });
         }
 
-        // Parse main data sheet
         const dataSheetName = workbook.SheetNames.includes('Clinical Trials Data')
             ? 'Clinical Trials Data'
             : workbook.SheetNames[0];
@@ -54,7 +51,6 @@ module.exports = async (req, res) => {
         const dataSheet = workbook.Sheets[dataSheetName];
         const rawData = XLSX.utils.sheet_to_json(dataSheet, { defval: '' });
 
-        // Process studies
         const studies = rawData.map(row => ({
             Brand: row.Brand || '',
             Is_New_Study: parseBoolean(row.Is_New_Study),
@@ -72,7 +68,6 @@ module.exports = async (req, res) => {
             Strategic_Implications: row.Strategic_Implications || ''
         })).filter(s => s.NCT_Number);
 
-        // Calculate stats
         const brands = new Set(studies.map(s => s.Brand).filter(Boolean));
         const stats = {
             totalStudies: studies.length,
@@ -97,8 +92,7 @@ function parseBoolean(value) {
 
 function formatPhase(value) {
     if (!value && value !== 0) return '';
-    const str = String(value);
-    return str.replace(/\.0$/, '');
+    return String(value).replace(/\.0$/, '');
 }
 
 function formatDate(value) {
