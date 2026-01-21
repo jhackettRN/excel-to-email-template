@@ -1,21 +1,24 @@
-import { IncomingForm } from 'formidable';
-import * as XLSX from 'xlsx';
-import { readFileSync } from 'fs';
+const formidable = require('formidable');
+const XLSX = require('xlsx');
+const fs = require('fs');
 
-export const config = {
-    api: {
-        bodyParser: false,
-    },
-};
+module.exports = async (req, res) => {
+    // Enable CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-export default async function handler(req, res) {
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     if (req.method !== 'POST') {
         return res.status(405).json({ message: 'Method not allowed' });
     }
 
     try {
-        const form = new IncomingForm();
-        
+        const form = formidable({ multiples: false });
+
         const [fields, files] = await new Promise((resolve, reject) => {
             form.parse(req, (err, fields, files) => {
                 if (err) reject(err);
@@ -28,7 +31,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        const buffer = readFileSync(file.filepath);
+        const buffer = fs.readFileSync(file.filepath);
         const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
 
         // Parse Config sheet
@@ -43,11 +46,11 @@ export default async function handler(req, res) {
             });
         }
 
-        // Parse main data sheet (first sheet or 'Clinical Trials Data')
-        const dataSheetName = workbook.SheetNames.includes('Clinical Trials Data') 
-            ? 'Clinical Trials Data' 
+        // Parse main data sheet
+        const dataSheetName = workbook.SheetNames.includes('Clinical Trials Data')
+            ? 'Clinical Trials Data'
             : workbook.SheetNames[0];
-        
+
         const dataSheet = workbook.Sheets[dataSheetName];
         const rawData = XLSX.utils.sheet_to_json(dataSheet, { defval: '' });
 
@@ -59,7 +62,7 @@ export default async function handler(req, res) {
             NCT_Number: row.NCT_Number || '',
             Study_Title: row.Study_Title || '',
             Study_URL: row.Study_URL || '',
-            Phase: row.Phase || '',
+            Phase: formatPhase(row.Phase),
             Sponsor: row.Sponsor || '',
             Status: row.Status || '',
             Start_Date: formatDate(row.Start_Date),
@@ -84,12 +87,18 @@ export default async function handler(req, res) {
         console.error('Parse error:', error);
         return res.status(500).json({ message: error.message || 'Failed to parse file' });
     }
-}
+};
 
 function parseBoolean(value) {
     if (typeof value === 'boolean') return value;
     if (typeof value === 'string') return value.toLowerCase() === 'true';
     return Boolean(value);
+}
+
+function formatPhase(value) {
+    if (!value && value !== 0) return '';
+    const str = String(value);
+    return str.replace(/\.0$/, '');
 }
 
 function formatDate(value) {
