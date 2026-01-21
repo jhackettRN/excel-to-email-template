@@ -1,0 +1,16 @@
+{
+  "name": "clinical-trials-email-generator",
+  "version": "1.0.0",
+  "description": "Generate formatted emails from clinical trials Excel data",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "formidable": "^3.5.1",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Trials Email Generator</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: #1a365d; margin-bottom: 8px; font-size: 24px; }
+        .subtitle { color: #64748b; margin-bottom: 24px; font-size: 14px; }
+        .panel { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 20px; }
+        .panel h2 { color: #334155; font-size: 16px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
+        .upload-zone { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: #3b82f6; background: #eff6ff; }
+        .upload-zone input { display: none; }
+        .upload-icon { font-size: 48px; margin-bottom: 12px; }
+        .upload-text { color: #64748b; }
+        .upload-text strong { color: #3b82f6; }
+        .file-info { margin-top: 16px; padding: 12px; background: #f0fdf4; border-radius: 6px; color: #166534; display: none; }
+        .btn { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #2563eb; }
+        .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-secondary { background: #64748b; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-group { display: flex; gap: 12px; margin-top: 16px; }
+        .output-container { display: none; }
+        .email-preview { background: #fefefe; border: 1px solid #e2e8f0; border-radius: 6px; padding: 24px; font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.5; max-height: 600px; overflow-y: auto; }
+        .email-preview a { color: #0563c1; }
+        .copy-feedback { position: fixed; top: 20px; right: 20px; background: #22c55e; color: white; padding: 12px 20px; border-radius: 6px; display: none; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .stat { background: #f8fafc; padding: 12px; border-radius: 6px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: 600; color: #1e40af; }
+        .stat-label { font-size: 12px; color: #64748b; }
+        .error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 12px; border-radius: 6px; margin-top: 16px; display: none; }
+        .loading { display: none; align-items: center; gap: 8px; color: #64748b; }
+        .spinner { width: 20px; height: 20px; border: 2px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .template-link { margin-top: 12px; font-size: 13px; }
+        .template-link a { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Clinical Trials Email Generator</h1>
+        <p class="subtitle">Upload your Excel file to generate a formatted email for Outlook</p>
+        
+        <div class="panel">
+            <h2>1. Upload Excel File</h2>
+            <div class="upload-zone" id="uploadZone">
+                <input type="file" id="fileInput" accept=".xlsx,.xls">
+                <div class="upload-icon">📊</div>
+                <p class="upload-text">Drag & drop your Excel file here or <strong>click to browse</strong></p>
+            </div>
+            <div class="file-info" id="fileInfo"></div>
+            <div class="template-link">
+                Need the template? <a href="/template.xlsx" download>Download Excel template</a>
+            </div>
+            <div class="error" id="uploadError"></div>
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <span>Processing file...</span>
+            </div>
+        </div>
+
+        <div class="output-container" id="outputContainer">
+            <div class="panel">
+                <h2>2. Summary</h2>
+                <div class="stats" id="stats"></div>
+            </div>
+
+            <div class="panel">
+                <h2>3. Email Preview</h2>
+                <div class="email-preview" id="emailPreview"></div>
+                <div class="btn-group">
+                    <button class="btn" id="copyBtn">Copy to Clipboard</button>
+                    <button class="btn btn-secondary" id="copyHtmlBtn">Copy as HTML</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
